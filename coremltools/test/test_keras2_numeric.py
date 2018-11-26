@@ -2337,7 +2337,8 @@ class KerasNumericCorrectnessStressTest(KerasNumericCorrectnessTest):
     @pytest.mark.slow
     def test_upsample_layer_params(self):
         options = dict(
-            size= [(2,2), (3,3), (4,4), (5,5)],
+            size=[(2, 2), (3, 3), (4, 4), (5, 5)],
+            interpolation=['nearest', 'bilinear'],
         )
 
         np.random.seed(1988)
