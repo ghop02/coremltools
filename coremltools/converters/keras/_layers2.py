@@ -595,7 +595,7 @@ def convert_batchnorm(builder, layer, input_names, output_names, keras_layer,
     # Get input and output names
     input_name, output_name = (input_names[0], output_names[0])
 
-    axis = keras_layer.axis
+    axis = tuple(keras_layer.axis)[0]
     nb_channels = keras_layer.input_shape[axis]
 
     # Set parameters

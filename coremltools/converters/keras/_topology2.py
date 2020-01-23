@@ -23,6 +23,7 @@ _KERAS_ACTIVATION_LAYERS = [
 
 _KERAS_NORMALIZATION_LAYERS = [
     _keras.layers.BatchNormalization,
+    _keras.layers.normalization_v2.BatchNormalization
 ]
 
 _KERAS_RECURRENT_LAYERS = [
@@ -169,11 +170,6 @@ class NetGraph(object):
                 # search for the InputLayer that matches this ts
                 for l in self.layer_list:
                     kl = self.keras_layer_map[l]
-                    print(kl.input.name, ts.name)
-                    if kl.input.name == ts.name:
-                        print(kl)
-                        print(InputLayer)
-                    print(isinstance(kl, InputLayer))
                     if isinstance(kl, InputLayer) and kl.input.name == ts.name:
                         print("HIIIII")
                         self.input_layers.append(l)

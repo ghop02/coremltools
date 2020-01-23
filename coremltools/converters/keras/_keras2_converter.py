@@ -58,6 +58,7 @@ if _HAS_KERAS2_TF:
         _keras.layers.wrappers.Bidirectional: _layers2.convert_bidirectional,
 
         _keras.layers.normalization.BatchNormalization: _layers2.convert_batchnorm,
+        _keras.layers.normalization_v2.BatchNormalization: _layers2.convert_batchnorm,
 
         _keras.layers.Add: _layers2.convert_merge,
         _keras.layers.Multiply: _layers2.convert_merge,
@@ -342,7 +343,6 @@ def _convert(model,
             input_names = [input_names]
     else:
         input_names = ['input' + str(i+1) for i in range(len(inputs))]
-    print(input_names)
     if output_names is not None:
         if isinstance(output_names, _string_types):
             output_names = [output_names]
