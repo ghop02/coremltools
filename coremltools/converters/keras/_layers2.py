@@ -966,6 +966,7 @@ def convert_upsample(builder, layer, input_names, output_names, keras_layer,
              output_name = output_name,
              mode = mode)
 
+
 def convert_permute(builder, layer, input_names, output_names, keras_layer,
                     respect_train):
     """
