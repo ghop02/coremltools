@@ -1,4 +1,7 @@
 import unittest
+import os
+import tempfile
+
 
 from coremltools import _deps
 from coremltools.proto import Model_pb2
@@ -34,7 +37,7 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_dense(self):
         """
-        Test the conversion of Dense layer.
+        Test the conversion of _keras.layers.Dense layer.
         """
         # Create a simple Keras model
         model = Sequential()
@@ -68,7 +71,7 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_activations(self):
         """
-        Test the conversion for a Dense + Activation('something')
+        Test the conversion for a _keras.layers.Dense + Activation('something')
         """
         # Create a simple Keras model
         keras_activation_options = [
@@ -129,7 +132,7 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_activation_softmax(self):
         """
-        Test the conversion for a Dense + Activation('softmax')
+        Test the conversion for a _keras.layers.Dense + Activation('softmax')
         """
         # Create a simple Keras model
         model = Sequential()
@@ -166,7 +169,7 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_dropout(self):
         """
-        Test the conversion for a Dense + Dropout
+        Test the conversion for a _keras.layers.Dense + Dropout
         """
         # Create a simple Keras model
         model = Sequential()
@@ -176,7 +179,9 @@ class KerasSingleLayerTest(unittest.TestCase):
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -224,7 +229,9 @@ class KerasSingleLayerTest(unittest.TestCase):
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -279,7 +286,9 @@ class KerasSingleLayerTest(unittest.TestCase):
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -333,7 +342,9 @@ class KerasSingleLayerTest(unittest.TestCase):
         model.add(_keras.layers.UpSampling2D(size=(2, 2)))
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -369,11 +380,15 @@ class KerasSingleLayerTest(unittest.TestCase):
             )
         )
         try:
-            model.add(UpSampling2D(size=(2, 2), interpolation="bilinear"))
+            model.add(
+                _keras.layers.UpSampling2D(size=(2, 2), interpolation="bilinear")
+            )
         except TypeError:  # Early version of Keras, no support for 'interpolation'
             return
 
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
         layers = spec.neuralNetwork.layers
         layer_1 = layers[1]
@@ -400,11 +415,13 @@ class KerasSingleLayerTest(unittest.TestCase):
                 use_bias=True,
             )
         )
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(_keras.layers.MaxPooling2D(pool_size=(2, 2)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -429,15 +446,15 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion of pooling layer.
         """
-        from keras.layers.core import Permute
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Permute((3, 2, 1), input_shape=(10, 64, 3)))
+        model.add(_keras.layers.Permute((3, 2, 1), input_shape=(10, 64, 3)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -463,15 +480,16 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion of an LSTM layer.
         """
-        from keras.layers import LSTM
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(LSTM(32, input_shape=(10, 24)))
+        print(model)
+        model.add(_keras.layers.LSTM(32, input_shape=(10, 24)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
 
         print(spec)
 
@@ -505,15 +523,16 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion of a simple RNN layer.
         """
-        from keras.layers import SimpleRNN
 
         # Create a simple Keras model
         model = Sequential()
-        model.add(SimpleRNN(32, input_shape=(10, 32)))
+        model.add(_keras.layers.SimpleRNN(32, input_shape=(10, 32)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -542,15 +561,15 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion of a GRU layer.
         """
-        from keras.layers import GRU
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(GRU(32, input_shape=(32, 10)))
+        model.add(_keras.layers.GRU(32, input_shape=(32, 10)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -579,16 +598,15 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion of a bidirectional layer
         """
-        from keras.layers import LSTM
-        from keras.layers.wrappers import Bidirectional
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Bidirectional(LSTM(32, input_shape=(10, 32)), input_shape=(10, 32)))
+        model.add(_keras.layers.Bidirectional(_keras.layers.LSTM(32, input_shape=(10, 32)), input_shape=(10, 32)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -631,7 +649,9 @@ class KerasSingleLayerTest(unittest.TestCase):
         input_names = ["input"]
         output_names = ["output"]
 
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
 
         self.assertIsNotNone(spec)
 
@@ -656,10 +676,8 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_sentiment_analysis(self):
         """
-        Test the conversion for a Embedding + LSTM + Dense layer
+        Test the conversion for a Embedding + LSTM + _keras.layers.Dense layer
         """
-        from keras.layers import Dense, Embedding, LSTM
-
         # Create a simple Keras model
         max_features = 50
         embedded_dim = 32
@@ -668,17 +686,19 @@ class KerasSingleLayerTest(unittest.TestCase):
         model = Sequential()
         # Embedding layer example:
         # Embedding(1000, 64, input_length=10) input_dim=index(0~999), 64-dimensional vector, sequence length = 10
-        # If we have Dense/Flatten layer upstream, input_length, a.k.a sequence_length is required
+        # If we have _keras.layers.Dense/Flatten layer upstream, input_length, a.k.a sequence_length is required
 
         model.add(Embedding(max_features, embedded_dim, input_length=sequence_length))
         # output_dim = 32
         model.add(LSTM(32))
-        model.add(Dense(1, activation="sigmoid"))
+        model.add(_keras.layers.Dense(1, activation="sigmoid"))
 
         # Input/output
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -697,18 +717,19 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertIsNotNone(layers[2].innerProduct)
 
     def test_conv1d_lstm(self):
-        from keras.layers import Conv1D, LSTM, Dense
 
         model = Sequential()
         # input_shape = (time_step, dimensions)
-        model.add(Conv1D(32, 3, padding="same", input_shape=(10, 8)))
+        model.add(_keras.layers.Conv1D(32, 3, padding="same", input_shape=(10, 8)))
         # conv1d output shape = (None, 10, 32)
-        model.add(LSTM(24))
-        model.add(Dense(1, activation="sigmoid"))
+        model.add(_keras.layers.LSTM(24))
+        model.add(_keras.layers.Dense(1, activation="sigmoid"))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
 
         self.assertIsNotNone(spec)
         self.assertTrue(spec.HasField("neuralNetwork"))
@@ -727,8 +748,7 @@ class KerasSingleLayerTest(unittest.TestCase):
         """
         Test the conversion for a Convoultion2D + Batchnorm layer
         """
-        from keras.layers.normalization import BatchNormalization
-
+        use_new_batchnorm = True
         # Create a simple Keras model
         model = Sequential()
         model.add(
@@ -743,10 +763,24 @@ class KerasSingleLayerTest(unittest.TestCase):
             )
         )
         # epsilon in CoreML is currently fixed at 1e-5
-        model.add(BatchNormalization(epsilon=1e-5))
+        if use_new_batchnorm:
+            model.add(
+                _keras.layers.normalization_v2.BatchNormalization(
+                    epsilon=1e-5
+                )
+            )
+        else:
+            model.add(
+                _keras.layers.normalization.BatchNormalization(
+                    epsilon=1e-5
+                )
+            )
+
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -770,11 +804,13 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     def test_repeat_vector(self):
         model = Sequential()
-        model.add(RepeatVector(3, input_shape=(5,)))
+        model.add(_keras.layers.RepeatVector(3, input_shape=(5,)))
 
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(model, input_names, output_names).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, input_names, output_names
+        ).get_spec()
         self.assertIsNotNone(spec)
         # Test the model class
         self.assertIsNotNone(spec.description)
@@ -793,20 +829,22 @@ class KerasSingleLayerTest(unittest.TestCase):
 
     @pytest.mark.xfail(raises=ValueError)
     def test_unsupported_variational_deconv(self):
-        x = Input(shape=(8, 8, 3))
+        x = _keras.layers.Input(shape=(8, 8, 3))
         conv_1 = _keras.layers.Conv2D(4, (2, 2), padding="same", activation="relu")(x)
-        flat = Flatten()(conv_1)
-        hidden = Dense(10, activation="relu")(flat)
-        z_mean = Dense(10)(hidden)
-        z_log_var = Dense(10)(hidden)
+        flat = _keras.layers.Flatten()(conv_1)
+        hidden = _keras.layers.Dense(10, activation="relu")(flat)
+        z_mean = _keras.layers.Dense(10)(hidden)
+        z_log_var = _keras.layers.Dense(10)(hidden)
 
         def sampling(args):
             z_mean, z_log_var = args
             return z_mean + z_log_var
 
-        z = Lambda(sampling, output_shape=(10,))([z_mean, z_log_var])
+        z = _keras.layers.Lambda(sampling, output_shape=(10,))([z_mean, z_log_var])
         model = Model([x], [z])
-        spec = keras.convert(model, ["input"], ["output"]).get_spec()
+        spec = coremltools.converters.keras.convert(
+            model, ["input"], ["output"]
+        ).get_spec()
 
     def test_image_processing(self):
         """
@@ -828,7 +866,7 @@ class KerasSingleLayerTest(unittest.TestCase):
         )
         input_names = ["input"]
         output_names = ["output"]
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model,
             input_names,
             output_names,
@@ -870,7 +908,7 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(pr_0.greenBias, 120.0)
 
         # Configuration 2: isbgr = False
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model,
             input_names,
             output_names,
@@ -908,7 +946,7 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(pr_0.greenBias, 120.0)
 
         # Configuration 3: Defaults
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model,
             input_names,
             output_names,
@@ -943,19 +981,16 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(pr_0.greenBias, 0.0)
 
     def test_classifier_string_classes(self):
-        from keras.layers import Dense
-        from keras.layers import Activation
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Dense(32, input_shape=(16,)))
-        model.add(Activation("softmax"))
+        model.add(_keras.layers.Dense(32, input_shape=(16,)))
+        model.add(_keras.layers.Activation("softmax"))
         classes = ["c%s" % i for i in range(32)]
 
         input_names = ["input"]
         output_names = ["prob_output"]
         expected_output_names = ["prob_output", "classLabel"]
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model, input_names, output_names, class_labels=classes
         ).get_spec()
         self.assertIsNotNone(spec)
@@ -1002,15 +1037,10 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(sorted(classes), sorted(class_from_proto))
 
     def test_classifier_file(self):
-        from keras.layers import Dense
-        from keras.layers import Activation
-        import os
-        import tempfile
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Dense(32, input_shape=(16,)))
-        model.add(Activation("softmax"))
+        model.add(_keras.layers.Dense(32, input_shape=(16,)))
+        model.add(_keras.layers.Activation("softmax"))
         classes = ["c%s" % i for i in range(32)]
         classes_file = tempfile.mktemp()
         with open(classes_file, "w") as f:
@@ -1019,7 +1049,7 @@ class KerasSingleLayerTest(unittest.TestCase):
         input_names = ["input"]
         output_names = ["prob_output"]
         expected_output_names = ["prob_output", "classLabel"]
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model, input_names, output_names, class_labels=classes
         ).get_spec()
         self.assertIsNotNone(spec)
@@ -1057,19 +1087,16 @@ class KerasSingleLayerTest(unittest.TestCase):
         os.remove(classes_file)
 
     def test_classifier_integer_classes(self):
-        from keras.layers import Dense
-        from keras.layers import Activation
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Dense(32, input_shape=(16,)))
-        model.add(Activation("softmax"))
+        model.add(_keras.layers.Dense(32, input_shape=(16,)))
+        model.add(_keras.layers.Activation("softmax"))
         classes = list(range(32))
 
         input_names = ["input"]
         output_names = ["prob_output"]
         expected_output_names = ["prob_output", "classLabel"]
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model, input_names, output_names, class_labels=classes
         ).get_spec()
         self.assertIsNotNone(spec)
@@ -1116,19 +1143,16 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(sorted(classes), sorted(class_from_proto))
 
     def test_classifier_custom_class_name(self):
-        from keras.layers import Dense
-        from keras.layers import Activation
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Dense(32, input_shape=(16,)))
+        model.add(_keras.layers.Dense(32, input_shape=(16,)))
         model.add(Activation("softmax"))
         classes = ["c%s" % i for i in range(32)]
 
         input_names = ["input"]
         output_names = ["prob_output"]
         expected_output_names = ["prob_output", "my_foo_bar_class_output"]
-        spec = keras.convert(
+        spec = coremltools.converters.keras.convert(
             model,
             input_names,
             output_names,
@@ -1181,17 +1205,14 @@ class KerasSingleLayerTest(unittest.TestCase):
         self.assertEqual(sorted(classes), sorted(class_from_proto))
 
     def test_default_interface_names(self):
-        from keras.layers import Dense
-        from keras.layers import Activation
-
         # Create a simple Keras model
         model = Sequential()
-        model.add(Dense(32, input_shape=(16,)))
-        model.add(Activation("softmax"))
+        model.add(_keras.layers.Dense(32, input_shape=(16,)))
+        model.add(_keras.layers.Activation("softmax"))
 
         expected_input_names = ["input1"]
         expected_output_names = ["output1"]
-        spec = keras.convert(model).get_spec()
+        spec = coremltools.converters.keras.convert(model).get_spec()
         self.assertIsNotNone(spec)
 
         # Test the model class
@@ -1216,7 +1237,6 @@ class KerasSingleLayerTest(unittest.TestCase):
         any 'trainable' layers of the original network.
         """
         import coremltools
-        from keras.layers import Dense
         from keras.losses import categorical_crossentropy
         from keras.optimizers import SGD
 
@@ -1225,10 +1245,10 @@ class KerasSingleLayerTest(unittest.TestCase):
         # First, set respect_trainable to False and then check to make sure the
         # converted model is NOT updatable.
         not_updatable = Sequential()
-        not_updatable.add(Dense(128, input_shape=(16,)))
+        not_updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
         # layer is updatable, but the flag during convert is false, so that bit
         # must get dropped on the floor.
-        not_updatable.add(Dense(10, name="foo", activation="softmax", trainable=True))
+        not_updatable.add(_keras.layers.Dense(10, name="foo", activation="softmax", trainable=True))
         not_updatable.compile(
             loss=categorical_crossentropy, optimizer=SGD(lr=0.01), metrics=["accuracy"]
         )
@@ -1248,7 +1268,6 @@ class KerasSingleLayerTest(unittest.TestCase):
         model with categorical cross entropy loss and SGD optimizer.
         """
         import coremltools
-        from keras.layers import Dense
         from keras.losses import categorical_crossentropy
         from keras.optimizers import SGD
 
@@ -1257,8 +1276,8 @@ class KerasSingleLayerTest(unittest.TestCase):
 
         # This should result in an updatable model.
         updatable = Sequential()
-        updatable.add(Dense(128, input_shape=(16,)))
-        updatable.add(Dense(10, name="foo", activation="softmax", trainable=True))
+        updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
+        updatable.add(_keras.layers.Dense(10, name="foo", activation="softmax", trainable=True))
         updatable.compile(
             loss=categorical_crossentropy, optimizer=SGD(lr=1.0), metrics=["accuracy"]
         )
@@ -1283,7 +1302,6 @@ class KerasSingleLayerTest(unittest.TestCase):
         Keras model defined via the Keras functional API.
         """
         import coremltools
-        from keras.layers import Dense, Input
         from keras.losses import categorical_crossentropy
         from keras.optimizers import SGD
 
@@ -1291,9 +1309,9 @@ class KerasSingleLayerTest(unittest.TestCase):
         output = ["output"]
 
         # This should result in an updatable model.
-        inputs = Input(shape=(16,))
-        d1 = Dense(128)(inputs)
-        d2 = Dense(10, name="foo", activation="softmax", trainable=True)(d1)
+        inputs = _keras.layers.Input(shape=(16,))
+        d1 = _keras.layers.Dense(128)(inputs)
+        d2 = _keras.layers.Dense(10, name="foo", activation="softmax", trainable=True)(d1)
         kmodel = Model(inputs=inputs, outputs=d2)
         kmodel.compile(
             loss=categorical_crossentropy, optimizer=SGD(lr=1.0), metrics=["accuracy"]
@@ -1319,7 +1337,6 @@ class KerasSingleLayerTest(unittest.TestCase):
         model with mean squared error loss and the Adam optimizer.
         """
         import coremltools
-        from keras.layers import Dense
         from keras.losses import mean_squared_error
         from keras.optimizers import Adam
 
@@ -1328,8 +1345,8 @@ class KerasSingleLayerTest(unittest.TestCase):
 
         # Again, this should give an updatable model.
         updatable = Sequential()
-        updatable.add(Dense(128, input_shape=(16,)))
-        updatable.add(Dense(10, name="foo", activation="softmax", trainable=True))
+        updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
+        updatable.add(_keras.layers.Dense(10, name="foo", activation="softmax", trainable=True))
         updatable.compile(
             loss=mean_squared_error,
             optimizer=Adam(lr=1.0, beta_1=0.5, beta_2=0.75, epsilon=0.25),
@@ -1357,11 +1374,9 @@ class KerasSingleLayerTest(unittest.TestCase):
         compiled, and thus do not have a loss function or optimizer.
         """
         import coremltools
-        from keras.layers import Dense
-
         updatable = Sequential()
-        updatable.add(Dense(128, input_shape=(16,)))
-        updatable.add(Dense(10, name="foo", activation="softmax", trainable=True))
+        updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
+        updatable.add(_keras.layers.Dense(10, name="foo", activation="softmax", trainable=True))
         input = ["data"]
         output = ["output"]
         cml = coremltools.converters.keras.convert(
@@ -1381,12 +1396,11 @@ class KerasSingleLayerTest(unittest.TestCase):
         for the loss(here mse), conversion is successful
         """
         import coremltools
-        from keras.layers import Dense
         from keras.optimizers import Adam
 
         updatable = Sequential()
-        updatable.add(Dense(128, input_shape=(16,)))
-        updatable.add(Dense(10, name="foo", activation="relu", trainable=True))
+        updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
+        updatable.add(_keras.layers.Dense(10, name="foo", activation="relu", trainable=True))
         updatable.compile(
             loss="mean_squared_error",
             optimizer=Adam(lr=1.0, beta_1=0.5, beta_2=0.75, epsilon=0.25),
@@ -1450,12 +1464,11 @@ class KerasSingleLayerTest(unittest.TestCase):
         for the loss(here cce), conversion is successful
         """
         import coremltools
-        from keras.layers import Dense
         from keras.optimizers import SGD
 
         updatable = Sequential()
-        updatable.add(Dense(128, input_shape=(16,)))
-        updatable.add(Dense(10, name="foo", activation="softmax", trainable=True))
+        updatable.add(_keras.layers.Dense(128, input_shape=(16,)))
+        updatable.add(_keras.layers.Dense(10, name="foo", activation="softmax", trainable=True))
         updatable.compile(
             loss="categorical_crossentropy", optimizer=SGD(lr=1.0), metrics=["accuracy"]
         )
@@ -1516,16 +1529,15 @@ class KerasSingleLayerTest(unittest.TestCase):
         conversion is successful
         """
         import coremltools
-        from keras.layers import Dense, Input
         from keras.losses import categorical_crossentropy
 
         input = ["data"]
         output = ["output"]
 
         # This should result in an updatable model.
-        inputs = Input(shape=(16,))
-        d1 = Dense(128)(inputs)
-        d2 = Dense(10, name="foo", activation="softmax", trainable=True)(d1)
+        inputs = _keras.layers.Input(shape=(16,))
+        d1 = _keras.layers.Dense(128)(inputs)
+        d2 = _keras.layers.Dense(10, name="foo", activation="softmax", trainable=True)(d1)
         kmodel = Model(inputs=inputs, outputs=d2)
         kmodel.compile(
             loss=categorical_crossentropy, optimizer="sgd", metrics=["accuracy"]
@@ -1554,16 +1566,17 @@ class KerasSingleLayerTest(unittest.TestCase):
         conversion is successful
         """
         import coremltools
-        from keras.layers import Dense, Input
         from keras.losses import categorical_crossentropy
 
         input = ["data"]
         output = ["output"]
 
         # This should result in an updatable model.
-        inputs = Input(shape=(16,))
-        d1 = Dense(128)(inputs)
-        d2 = Dense(10, name="foo", activation="softmax", trainable=True)(d1)
+        inputs = _keras.layers.Input(shape=(16,))
+        d1 = _keras.layers.Dense(128)(inputs)
+        d2 = _keras.layers.Dense(
+            10, name="foo", activation="softmax", trainable=True
+        )(d1)
         kmodel = Model(inputs=inputs, outputs=d2)
         kmodel.compile(
             loss=categorical_crossentropy, optimizer="adam", metrics=["accuracy"]

@@ -215,8 +215,8 @@ class NetGraph(object):
                     in_nodes = k_layer._inbound_nodes if hasattr(k_layer, '_inbound_nodes') else k_layer.inbound_nodes
                     for idx in range(len(in_nodes)):
                         out_tensor = k_layer.get_output_at(idx)
-                        print(id(model_output))
-                        print(id(out_tensor))
+                        # TODO: I don't think this is the proper way to
+                        # compare this...
                         if id(out_tensor) == id(model_output) or (out_tensor.name in model_output.name):
                             self.output_layers.append(l)
         if len(self.output_layers) == 0:
@@ -673,7 +673,6 @@ class NetGraph(object):
             in_nodes = layer._inbound_nodes if hasattr(layer,
                     '_inbound_nodes') else layer.inbound_nodes
             for node in in_nodes:
-                print(node.inbound_layers)
                 inbound_layers = node.inbound_layers
                 if not isinstance(inbound_layers, list):
                     inbound_layers = [inbound_layers]

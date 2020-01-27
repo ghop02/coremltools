@@ -4,19 +4,23 @@
 # found in the LICENSE.txt file or at https://opensource.org/licenses/BSD-3-Clause
 from . import _utils
 import logging
-from tensorflow.python import keras as _keras
+from coremltools import _deps
+
+if _deps.HAS_TF_2:
+    from tensorflow.python import keras as _keras
+else:
+    import keras as _keras
+
 import numpy as _np
 from ...proto import NeuralNetwork_pb2 as _NeuralNetwork_pb2
 
 from distutils.version import StrictVersion as _StrictVersion
 
-if _keras.__version__.rstrip('-tf') >= _StrictVersion('2.2.1'):
-    from keras.layers import DepthwiseConv2D
-elif _keras.__version__.rstrip('-tf') >= _StrictVersion('2.2.0'):
-    from keras.layers import DepthwiseConv2D
-    from keras_applications.mobilenet import relu6
-else:
-    from keras.applications.mobilenet import DepthwiseConv2D, relu6
+if _deps.HAS_TF_2 or _keras.__version__ >= _StrictVersion('2.2.1'):
+    from tensorflow.python.keras.layers import DepthwiseConv2D
+elif _keras.__version__ >= _StrictVersion('2.2.0'):
+    from _keras.layers import DepthwiseConv2D
+
 
 def _get_recurrent_activation_name_from_keras(activation):
     if activation == _keras.activations.sigmoid:
@@ -967,6 +971,7 @@ def convert_upsample(builder, layer, input_names, output_names, keras_layer,
              mode = mode)
 
 
+
 def convert_permute(builder, layer, input_names, output_names, keras_layer,
                     respect_train):
     """
@@ -1378,6 +1383,7 @@ def convert_repeat_vector(builder, layer, input_names, output_names,
             nrep = keras_layer.n,
             input_name = input_name,
             output_name = output_name)
+
 
 def default_skip(builder, layer, input_names, output_names, keras_layer,
                  respect_train):
