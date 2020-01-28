@@ -7,6 +7,7 @@ import os
 import shutil
 from test_utils import generate_data
 from coremltools._deps import HAS_TF_2
+import math
 import pytest
 
 
@@ -47,7 +48,7 @@ class TestKerasFashionMnist(unittest.TestCase):
             inputs=inputs,
             outputs=outputs
         )
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
 
         # verify numeric correctness of predictions
         inputs = generate_data(shape=self.input_shape)
@@ -140,7 +141,7 @@ class TestModelFormats(unittest.TestCase):
             outputs=['Identity']
         )
 
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
 
     def test_control_flow(self):
         @tf.function(input_signature=[tf.TensorSpec([], tf.float32)])
@@ -164,7 +165,7 @@ class TestModelFormats(unittest.TestCase):
             outputs=['Identity']
         )
 
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
         input_data = generate_data(shape=[20])
         for data in input_data:
             tf_prediction = to_save.control_flow(data).numpy().flatten()
@@ -195,7 +196,7 @@ class TestModelFormats(unittest.TestCase):
             self.saved_model_dir,
             inputs={input_name: (4, 4)},
             outputs=[output_name])
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
         self._test_prediction(keras_model=keras_model, core_ml_model=model, inputs=inputs)
 
 
@@ -229,7 +230,7 @@ class TestKerasApplications(unittest.TestCase):
             inputs=inputs,
             outputs=outputs
         )
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
 
         if verbose:
             print('TensorFlow Keras model saved at {}'.format(model_path))
@@ -419,7 +420,16 @@ class TestCornerCases(unittest.TestCase):
         if os.path.exists(self.saved_model_dir):
             shutil.rmtree(self.saved_model_dir)
 
-    def _test_model(self, keras_model, model_path, inputs, outputs=None, decimal=4, verbose=False):
+    def _test_model(
+        self,
+        keras_model,
+        model_path,
+        inputs,
+        outputs=None,
+        decimal=4,
+        use_cpu_only=False,
+        verbose=False
+    ):
         keras_model.save(model_path)
 
         # convert and validate
@@ -428,7 +438,7 @@ class TestCornerCases(unittest.TestCase):
             inputs=inputs,
             outputs=outputs
         )
-        assert isinstance(model, coremltools.models.MLModel)
+        self.assertTrue(isinstance(model, coremltools.models.MLModel))
 
         if verbose:
             print('TensorFlow Keras model saved at {}'.format(model_path))
@@ -449,7 +459,7 @@ class TestCornerCases(unittest.TestCase):
             output_name = keras_model.outputs[0].name
             outputs = [output_name.split('/')[1].split(':')[0]]
 
-        prediction = model.predict({name: data})[outputs[0]]
+        prediction = model.predict({name: data}, use_cpu_only=use_cpu_only)[outputs[0]]
 
         if verbose:
             print('Shape Keras:', keras_prediction.shape, ' vs. Core ML:', prediction.shape)
@@ -496,6 +506,27 @@ class TestCornerCases(unittest.TestCase):
             if layer.WhichOneof('layer') == 'batchnorm':
                 num_batch_norm += 1
         self.assertEqual(num_batch_norm, 1)
+
+    def test_conv_bias_fusion(self):
+        x = tf.keras.layers.Input(shape=[32, 32, 3], batch_size=1)
+        conv = tf.keras.layers.Conv2D(filters=3, kernel_size=1)(x)
+        conv = tf.keras.layers.DepthwiseConv2D(kernel_size=1)(conv)
+        keras_model = tf.keras.Model(x, conv)
+        input_name = keras_model.inputs[0].name.split(':')[0]
+        model = self._test_model(keras_model=keras_model,
+                                 model_path=self.model_path,
+                                 decimal=3,
+                                 inputs={input_name: (1, 32, 32, 3)})
+        add_broadcastables = 0
+        load_constants = 0
+        for layer in model.get_spec().neuralNetwork.layers:
+            if layer.WhichOneof('layer') == 'addBroadcastable':
+                add_broadcastables += 1
+            if layer.WhichOneof('layer') == 'loadConstantND':
+                load_constants += 1
+
+        self.assertEqual(add_broadcastables, 0)
+        self.assertEqual(load_constants, 0)
 
     def test_conv2d_with_activation(self):
         inputs = tf.keras.layers.Input(shape=[256, 256, 3], batch_size=1)
@@ -548,7 +579,7 @@ class TestCornerCases(unittest.TestCase):
         model = self._test_model(keras_model=keras_model,
                                  model_path=self.model_path,
                                  inputs={input_name: (1, 6 * 75)},
-                                 outputs=[output_name], verbose=True)
+                                 outputs=[output_name])
         num_transposes = 0
         for layer in model.get_spec().neuralNetwork.layers:
             if layer.WhichOneof('layer') == 'transpose':
@@ -569,13 +600,75 @@ class TestCornerCases(unittest.TestCase):
         model = self._test_model(keras_model=keras_model,
                                  model_path=self.model_path,
                                  inputs={input_name: (1, 6 * 75)},
-                                 outputs=[output_name], verbose=True)
+                                 outputs=[output_name])
 
         num_reshapes = 0
         for layer in model.get_spec().neuralNetwork.layers:
             if layer.WhichOneof('layer') == 'reshapeStatic':
                 num_reshapes += 1
         self.assertEqual(num_reshapes, 1)
+
+    def test_gelu_tanh_approx_fusion(self):
+
+        @tf.function(input_signature=[tf.TensorSpec(shape=(6,), dtype=tf.float32)])
+        def gelu_tanh(x):
+            y = 0.5 * (1.0 + tf.tanh((math.sqrt(2 / math.pi) * (x + 0.044715 * tf.pow(x, 3)))))
+            return x * y
+
+        conc_func = gelu_tanh.get_concrete_function()
+        mlmodel = coremltools.converters.tensorflow.convert(
+            [conc_func],
+            inputs={conc_func.inputs[0].name[:-2]: conc_func.inputs[0].shape},
+            outputs=[conc_func.outputs[0].name[:-2]]
+        )
+
+        spec = mlmodel.get_spec()
+        nn_spec = spec.neuralNetwork
+        number_gelu_layers = 0
+        for layer in nn_spec.layers:
+            if layer.WhichOneof('layer') == 'gelu':
+                number_gelu_layers += 1
+        self.assertEqual(number_gelu_layers, 1)
+
+    def disable_test_layer_norm_fusion(self):
+        keras_model = tf.keras.Sequential()
+        keras_model.add(tf.keras.layers.LayerNormalization(axis=-1, input_shape=(3, 4, 5)))
+        input_name = keras_model.inputs[0].name.split(':')[0]
+        output_name = keras_model.outputs[0].name.split(':')[0].split('/')[-1]
+        model = self._test_model(keras_model=keras_model,
+                                 model_path=self.model_path,
+                                 inputs={input_name: (3, 4, 5)},
+                                 outputs=[output_name])
+
+    def test_wrong_out_name_error(self):
+
+        @tf.function(input_signature=[tf.TensorSpec(shape=(1,), dtype=tf.float32)])
+        def sin(x):
+            y = tf.sin(x)
+            return y
+
+        conc_func = sin.get_concrete_function()
+        with self.assertRaises(Exception) as cm:
+            coremltools.converters.tensorflow.convert(
+                [conc_func],
+                inputs={conc_func.inputs[0].name[:-2]: conc_func.inputs[0].shape},
+                outputs=['output_not_present'])
+
+        the_exception = str(cm.exception)
+        self.assertTrue("is not an output node in the source graph" in the_exception)
+
+    def test_softplus(self):
+        keras_model = tf.keras.Sequential([
+            tf.keras.layers.Flatten(input_shape=(28, 28)),
+            tf.keras.layers.Dense(128, activation='softplus')
+        ])
+
+        input_name = keras_model.inputs[0].name.split(':')[0]
+        output_name = keras_model.outputs[0].name.split(':')[0].split('/')[-1]
+        model = self._test_model(keras_model=keras_model,
+                                 model_path=self.model_path,
+                                 inputs={input_name: (1, 28, 28)},
+                                 outputs=[output_name], decimal=3)
 
 
 if __name__ == '__main__':
@@ -585,5 +678,5 @@ if __name__ == '__main__':
         unittest.main()
     else:
         suite = unittest.TestSuite()
-        suite.addTest(TestKerasFashionMnist('test_sequential_builder_keras_model_format'))
+        suite.addTest(TestCornerCases('test_wrong_out_name_error'))
         unittest.TextTestRunner().run(suite)
