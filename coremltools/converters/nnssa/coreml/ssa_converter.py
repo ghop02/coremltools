@@ -315,7 +315,7 @@ class SSAConverter(object):
 
         self.top_builder = NeuralNetworkBuilder(input_features=top_input_features,
                                                 output_features=top_output_features,
-                                                disable_rank5_shape_mapping=True,
+                                                disable_rank5_shape_mapping=False,
                                                 mode=neural_network_type,
                                                 use_float_arraytype=True)
 
