@@ -8,15 +8,13 @@
 import os
 from setuptools import setup
 
-from coremltools import __version__
-
 README = os.path.join(os.getcwd(), "README.rst")
 
 with open(README) as f:
     long_description = f.read()
 
 setup(name='coremltools',
-      version=__version__,
+      version="3.2",
       description='Community Tools for Core ML',
       long_description=long_description,
       author='Apple Inc.',
